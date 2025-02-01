@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 from os.path import exists
+import pandas as pd
 
 
 """
@@ -31,6 +32,7 @@ mappings = {
   "Acentrella_ampla": "314",
   "Acer_pensylvanicum": "333",
   "Acer_rubrum_v_rubrum": "337",
+  "Acer_rubrum_var._rubrum": "7372",
   "Acer_saccharum": "341",
   "Acer_spicatum": "343",
   "Acroneuria_abnormis": "685",
@@ -1008,7 +1010,44 @@ def _separate():
             if counts >= 30:
                 count_file.write(name + ',' + str(counts) +
                                  ',' + words[43] + '\n')
+                
+def separate_local():
+    local_atbi_file = '/app/data/atbifile.csv'
+    files_dir = './ATBI_files/'
+    os.makedirs(files_dir, exist_ok=True)
+    count_filename='./ATBI_counts.txt'
+    open(count_filename, 'w').close() #touch
+    
+    df = pd.read_csv(local_atbi_file)
+    
+    fields = ['genus_speciesmaxent','genus_speciesirma','grsm_speciesid','commonname','taxagroup','lon','lat']
+    if not set(fields).issubset(df.columns.tolist()):
+        raise Exception(f'Error: returned data does not contain the correct fields. \nGot: {",".join(df.columns.tolist())} \nExpected: {",".join(fields)}')
+    
+    grouped_df = df.groupby('genus_speciesmaxent')
+    
+    for name, group in grouped_df:
+        counts = 0
+        speciesID = None
+        useFields = fields if not JUST_COORDS else ['genus_speciesmaxent','lon','lat']
+        with open(f'{files_dir}/{name}.csv', 'w') as f:
+            writer = csv.DictWriter(f, delimiter=',', fieldnames=useFields)
+            writer.writeheader()
+        
+            for i, row in group.iterrows():
+                if row['lat'] == '' or float(row['lat']) == 0.0 or row['lon'] == '' or float(row['lon']) == 0:
+                    continue
+                counts += 1
+                speciesID = row['grsm_speciesid']
+                r = dict((k, row[k]) for k in useFields)
+                writer.writerow(r)
 
-
+        if counts >= 30:
+            with open(count_filename, 'a+') as count_file:
+                count_file.write(','.join([name, str(counts), str(speciesID)]) + '\n')
+    
 if __name__ == "__main__":
-    separate()
+    #separate()
+    separate_local()
+    #TODO: delete old _separate function
+    #TODO: get minimum count from environment variable and default to 0 for writing to COUNTS_FILE
