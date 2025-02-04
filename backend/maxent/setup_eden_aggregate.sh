@@ -11,6 +11,9 @@ input_dir=$RUN_DIR/maxent_results
 
 # Make command list for running aggregate.sh on each species.
 cut -d ',' -f1 $COUNTS_FILE | while read line; do
+   if [[ ! -d $input_dir/$species ]]; then
+      continue;
+   fi
    species=$line
    aggregate_cmd="cd $RUN_DIR; export TOOL_DIR=$TOOL_DIR; export CV_NUM_FOLDS=$CV_NUM_FOLDS; $TOOL_DIR/aggregate.sh $species"
    bov2asc_cmd="$TOOL_DIR/bov2asc $input_dir/$species/${species}_avg > $input_dir/$species/${species}_avg.asc"
